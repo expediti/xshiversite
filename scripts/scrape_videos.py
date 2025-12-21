@@ -12,9 +12,7 @@ import time
 import os
 
 LISTING_PAGES = [
-    "https://viralkand.com/",
-    "https://viralkand.com/page/2/",
-    "https://viralkand.com/page/3/",
+    "https://www.fsiblog5.com/"
 ]
 
 def get_post_urls(listing_url):
