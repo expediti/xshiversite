@@ -1,38 +1,47 @@
 [
   {
-    "id": "sample-001",
-    "title": "Sample Video 1",
-    "description": "Test video",
-    "thumbnailUrl": "https://via.placeholder.com/640x360/1",
-    "embedUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "id": "vid-jungle-mein-ladki-ne-mota-lund-chus-chus-ke-pani-n",
+    "title": "Jungle Mein Ladki Ne Mota Lund Chus Chus Ke Pani Nikala",
+    "description": "Viral video from viralkand.com",
     "category": "Viral",
-    "duration": "10:00",
+    "duration": "00:00",
+    "embedUrl": "https://vk25cdn.viralkand.com/8000/8332.mp4",
+    "thumbnailUrl": "https://mycdn.viralkand.com/wp-content/uploads/8332.jpg",
     "tags": [
-      "sample"
-    ]
+      "viralkand",
+      "viral"
+    ],
+    "uploadedAt": "2025-12-21T18:05:43.226056+00:00",
+    "views": 0
   },
   {
-    "id": "sample-002",
-    "title": "Sample Video 2",
-    "description": "Test video",
-    "thumbnailUrl": "https://via.placeholder.com/640x360/2",
-    "embedUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "id": "vid-bhabhi-ne-devar-ki-ghotiya-chooskar-garam-kiya-bis",
+    "title": "Bhabhi Ne Devar Ki Ghotiya Chooskar Garam Kiya Bistar",
+    "description": "Viral video from viralkand.com",
     "category": "Viral",
-    "duration": "10:00",
+    "duration": "00:00",
+    "embedUrl": "https://vk25cdn.viralkand.com/8000/8328.mp4",
+    "thumbnailUrl": "https://mycdn.viralkand.com/wp-content/uploads/8328.jpg",
     "tags": [
-      "sample"
-    ]
+      "viralkand",
+      "viral"
+    ],
+    "uploadedAt": "2025-12-21T18:06:48.164131+00:00",
+    "views": 0
   },
   {
-    "id": "sample-003",
-    "title": "Sample Video 3",
-    "description": "Test video",
-    "thumbnailUrl": "https://via.placeholder.com/640x360/3",
-    "embedUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "id": "vid-patni-ki-chut-mein-lotus-position-ka-garma-garam-k",
+    "title": "Patni Ki Chut Mein Lotus Position Ka Garma Garam Khel",
+    "description": "Viral video from viralkand.com",
     "category": "Viral",
-    "duration": "10:00",
+    "duration": "00:00",
+    "embedUrl": "https://vk25cdn.viralkand.com/8000/8325.mp4",
+    "thumbnailUrl": "https://mycdn.viralkand.com/wp-content/uploads/8325.jpg",
     "tags": [
-      "sample"
-    ]
+      "viralkand",
+      "viral"
+    ],
+    "uploadedAt": "2025-12-21T18:06:49.955815+00:00",
+    "views": 0
   }
 ]
