@@ -2,8 +2,6 @@ name: Scrape Viralkand
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 */8 * * *'  # Every 8 hours
 
 permissions:
   contents: write
@@ -13,38 +11,30 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 lxml
+      - run: pip install requests beautifulsoup4 lxml
       
       - name: Run scraper
         run: python scripts/scrape_videos.py
+        continue-on-error: true
       
-      - name: Show results
+      - name: Check results
         run: |
-          echo "=== Video count ==="
-          cat data/videos.json | grep '"id"' | wc -l
-          echo ""
-          echo "=== First video ==="
-          cat data/videos.json | head -20
-      
-      - name: Commit and push changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/videos.json
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
+          if [ -f data/videos.json ]; then
+            echo "✅ videos.json exists"
+            wc -l data/videos.json
           else
-            git commit -m "🎥 Scraped $(date -u +'%d %b %Y %H:%M UTC')"
-            git push
+            echo "❌ videos.json missing"
           fi
+      
+      - name: Commit
+        run: |
+          git config user.name "bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/videos.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update" && git push)
