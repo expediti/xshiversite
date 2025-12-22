@@ -75,7 +75,7 @@ async function scrapeSite(targetUrl) {
 async function main() {
   const targetUrls = [
     // TODO: put your shady listing pages here
-    'https://example.com/videos',
+    'https://viralkand.com/page/3/',
     // 'https://second-site.com/page1',
   ];
 
