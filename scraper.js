@@ -1,5 +1,5 @@
-// scraper.js  (root)
-const { chromium } = require('playwright'); // NOTE: 'playwright', not 'playwright-core'
+// scraper.js (root)
+const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
@@ -40,8 +40,7 @@ async function scrapeSite(targetUrl) {
       const imgEl =
         card.querySelector('img') ||
         document.querySelector('meta[property="og:image"]');
-      const thumb =
-        imgEl?.src || imgEl?.content || '' || '';
+      const thumb = imgEl?.src || imgEl?.content || '';
 
       // priority 1: iframe on card
       let embed = '';
@@ -71,13 +70,14 @@ async function scrapeSite(targetUrl) {
   console.log(`Found ${videos.length} videos on ${targetUrl}`);
   return videos;
 }
+
 async function main() {
   const targetUrls = [
     'https://viralkand.com/page/5/',
     'https://viralkand.com/page/6/',
     'https://viralkand.com/page/7/',
-    'https://viralkand.com/page/8/'
-  ]; // ← no extra comma after last item, no extra ]
+    'https://viralkand.com/page/8/',
+  ];
 
   let allNew = [];
   for (const url of targetUrls) {
@@ -97,7 +97,6 @@ async function main() {
     existing = [];
   }
 
-  // dedupe by embed/url
   const combined = [...existing];
   allNew.forEach((v) => {
     if (!combined.some((e) => e.embed === v.embed || e.url === v.url)) {
