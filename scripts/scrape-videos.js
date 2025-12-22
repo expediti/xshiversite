@@ -104,7 +104,8 @@ async function run() {
 
         /* OPEN POST PAGE */
         const post = await context.newPage();
-        await post.goto(postUrl, { waitUntil: "networkidle", timeout: 60000 });
+       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+
         await post.waitForTimeout(2000);
 
         /* EMBED EXTRACTION (FILTER ADS) */
