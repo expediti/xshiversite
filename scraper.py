@@ -5,18 +5,22 @@ import json
 import re
 from datetime import datetime
 import time
+import os
+
+SCRAPER_API_KEY = '512bf9b26d582f99b50ae92297c7fb7b'
 
 def scrape_viralkand(page_num):
     url = f"https://viralkand.com/page/{page_num}/" if page_num > 1 else "https://viralkand.com/"
     
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
+    # Route through ScraperAPI to bypass bot detection
+    api_url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={url}"
     
     try:
-        response = requests.get(url, headers=headers, timeout=15)
+        print(f"Fetching page {page_num} via ScraperAPI...")
+        response = requests.get(api_url, timeout=60)
+        
         if response.status_code != 200:
-            print(f"Failed to fetch {url}: {response.status_code}")
+            print(f"Failed: {response.status_code}")
             return []
         
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -75,32 +79,30 @@ def main():
     
     # Scrape 10 pages
     for page in range(1, 11):
-        print(f"\nScraping page {page}...")
         videos = scrape_viralkand(page)
         all_videos.extend(videos)
-        time.sleep(2)  # Delay between requests
+        time.sleep(1)  # Small delay between pages
     
-    # Load existing
+    # Load existing videos
     try:
         with open('data/videos.json', 'r') as f:
             existing = json.load(f)
     except:
         existing = []
     
-    # Dedupe
+    # Dedupe by id
     existing_ids = {v['id'] for v in existing}
     new_videos = [v for v in all_videos if v['id'] not in existing_ids]
     
     combined = existing + new_videos
     
-    # Save
-    import os
+    # Save to file
     os.makedirs('data', exist_ok=True)
     with open('data/videos.json', 'w') as f:
         json.dump(combined, f, indent=2)
     
     print(f"\n✅ Scraped {len(new_videos)} new videos from 10 pages")
-    print(f"✅ Total videos: {len(combined)}")
+    print(f"✅ Total videos in database: {len(combined)}")
 
 if __name__ == '__main__':
     main()
