@@ -1,4 +1,4 @@
-# scraper_desikahani2.py - CORRECT 2-STEP SCRAPING
+# scraper_desikahani2.py - FIXED TITLE EXTRACTION
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -7,27 +7,23 @@ import time
 import os
 
 def get_video_posts(page_num):
-    """Step 1: Get post URLs from listing page"""
+    """Get post URLs from listing"""
     if page_num == 1:
         url = "https://www.desikahani2.net/videos/"
     else:
         url = f"https://www.desikahani2.net/videos/?page={page_num}"
     
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    }
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     
     try:
         response = requests.get(url, headers=headers, timeout=30)
         if response.status_code != 200:
-            print(f"  Failed to load page {page_num}: {response.status_code}")
             return []
         
         soup = BeautifulSoup(response.content, 'html.parser')
         posts = []
         
-        # Find all video items/cards
-        items = soup.select('div.item') or soup.select('article')
+        items = soup.select('div.item')
         
         for item in items:
             link = item.find('a', href=True)
@@ -35,30 +31,35 @@ def get_video_posts(page_num):
                 continue
             
             href = link.get('href', '').strip()
-            if not href or href == '#':
+            if not href:
                 continue
             
-            # Make absolute URL
             if not href.startswith('http'):
-                href = 'https://www.desikahani2.net' + (href if href.startswith('/') else '/' + href)
+                href = 'https://www.desikahani2.net' + href
             
-            # Get title from card
-            title_el = item.find('h3') or item.find('h2')
-            title = title_el.get_text(strip=True) if title_el else 'Video'
+            # Get title - try multiple ways
+            title = link.get('title', '').strip()
+            if not title or len(title) < 3:
+                h3 = item.find('h3')
+                if h3:
+                    title = h3.get_text(strip=True)
+            if not title or len(title) < 3:
+                # Get from link text
+                title = link.get_text(strip=True)
             
-            # Get thumbnail from card
+            # Clean title
+            title = title.replace('\n', ' ').strip()
+            
+            # Get thumbnail
             img = item.find('img')
             thumb = ''
             if img:
-                thumb = img.get('data-src') or img.get('src', '')
+                thumb = img.get('data-src', '') or img.get('src', '')
             
-            posts.append({
-                'url': href,
-                'title': title,
-                'thumb': thumb
-            })
+            if href and title and len(title) > 3:
+                posts.append({'url': href, 'title': title, 'thumb': thumb})
         
-        print(f"  Found {len(posts)} posts on page {page_num}")
+        print(f"  Found {len(posts)} posts")
         return posts
         
     except Exception as e:
@@ -66,11 +67,8 @@ def get_video_posts(page_num):
         return []
 
 def extract_video_url(post_url):
-    """Step 2: Visit post page and extract actual video embed URL"""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://www.desikahani2.net/'
-    }
+    """Extract video embed from post page"""
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     
     try:
         response = requests.get(post_url, headers=headers, timeout=30)
@@ -79,12 +77,12 @@ def extract_video_url(post_url):
         
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Try iframe first (most common)
+        # Try iframe
         iframe = soup.find('iframe', src=True)
         if iframe:
-            embed_url = iframe.get('src')
-            if embed_url and 'http' in embed_url:
-                return embed_url
+            src = iframe.get('src')
+            if src and 'http' in src:
+                return src
         
         # Try video tag
         video = soup.find('video')
@@ -93,25 +91,22 @@ def extract_video_url(post_url):
             if source:
                 return source.get('src')
         
-        # Fallback: return post URL itself
+        # Fallback to post URL
         return post_url
         
-    except Exception as e:
+    except:
         return None
 
 def scrape_desikahani2(page_num):
-    """Main scraping function"""
     posts = get_video_posts(page_num)
     videos = []
     
-    for idx, post in enumerate(posts[:10]):  # Limit to 10 per page to avoid timeout
-        print(f"    Processing post {idx+1}/{len(posts[:10])}: {post['title'][:40]}")
+    for idx, post in enumerate(posts[:10]):
+        print(f"    {idx+1}/10: {post['title'][:50]}")
         
-        # Extract actual video URL
         embed_url = extract_video_url(post['url'])
         
         if not embed_url:
-            print(f"      ❌ No video URL found")
             continue
         
         video_id = f"dk-{abs(hash(embed_url)) % 1000000}"
@@ -127,8 +122,7 @@ def scrape_desikahani2(page_num):
             'uploadedAt': datetime.utcnow().isoformat() + 'Z',
             'views': 0
         })
-        
-        time.sleep(1)  # Polite delay between requests
+        time.sleep(1)
     
     return videos
 
@@ -136,32 +130,28 @@ def main():
     all_videos = []
     
     print("🔍 Starting Desikahani2 scraper...")
-    for page in range(1, 3):  # 2 pages
+    for page in range(1, 3):
         print(f"\n📄 Page {page}")
         videos = scrape_desikahani2(page)
         all_videos.extend(videos)
-        print(f"  ✅ Extracted {len(videos)} videos from page {page}")
+        print(f"  ✅ {len(videos)} videos")
         time.sleep(2)
     
-    # Load existing
     try:
         with open('data/videos.json', 'r') as f:
             existing = json.load(f)
     except:
         existing = []
     
-    # Dedupe by embedUrl
     existing_urls = {v.get('embedUrl') for v in existing}
     new_videos = [v for v in all_videos if v['embedUrl'] not in existing_urls]
-    
     combined = existing + new_videos
     
     os.makedirs('data', exist_ok=True)
     with open('data/videos.json', 'w') as f:
         json.dump(combined, f, indent=2)
     
-    print(f"\n✅ Total scraped: {len(new_videos)} new videos")
-    print(f"✅ Database total: {len(combined)} videos")
+    print(f"\n✅ Total: {len(new_videos)} new, {len(combined)} total")
 
 if __name__ == '__main__':
     main()
