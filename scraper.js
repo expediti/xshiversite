@@ -4,9 +4,9 @@ const fs = require("fs");
 const path = require("path");
 
 const URLS = [
-  "https://viralkand.com/page/1/",
+  "https://viralkand.com/",
   "https://viralkand.com/page/2/",
-  "https://www.fsiblog.cc/page/2/",
+  "https://www.fsiblog5.com/",
 ];
 
 const OUT = path.join(__dirname, "data", "videos.json");
