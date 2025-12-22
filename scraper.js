@@ -1,4 +1,4 @@
-// scraper.js (root)
+// scraper.js (root) - Viralkand only
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
@@ -24,77 +24,56 @@ async function scrapeSite(targetUrl) {
 
   await page.waitForTimeout(5000);
 
-  // remove ads/overlays
+  // Remove ads
   await page.evaluate(() => {
     document
-      .querySelectorAll(
-        'iframe[src*="ads"], iframe[src*="ad"], .ad, .ads, .popup, .overlay, .modal, [class*="ad-"], [id*="ad-"]'
-      )
+      .querySelectorAll('iframe, .ad, .ads, .popup, .overlay, .modal')
       .forEach((el) => el.remove());
   });
 
   const videos = await page.evaluate(() => {
     const out = [];
     
-    // Try multiple selectors for different site structures
-    const cards = document.querySelectorAll(
-      'article.post, article, .video-item, .post, a[href*="/video"], a[href*="/watch"]'
-    );
+    // Viralkand uses <article class="post">
+    const cards = document.querySelectorAll('article.post');
 
     cards.forEach((card, index) => {
-      // Get link
-      const link = card.tagName === 'A' ? card : card.querySelector('a');
+      const link = card.querySelector('a');
       if (!link) return;
 
-      const href = link.href || link.getAttribute('href') || '';
-      if (!href || href.includes('/tag/') || href.includes('/category/') || href.includes('/video-source/')) return;
+      const href = link.href || '';
+      if (!href) return;
 
-      // Get title - try multiple selectors
-      const titleEl =
-        card.querySelector('h2.entry-title a') ||
-        card.querySelector('h2.entry-title') ||
-        card.querySelector('h1, h2, h3, h4') ||
-        link.querySelector('h1, h2, h3, h4') ||
-        card.querySelector('.title, .post-title');
-      
-      const rawTitle = titleEl?.textContent || titleEl?.innerText || '';
-      const title = rawTitle.trim().replace(/\s+/g, ' ').replace(/Viral video from \w+\.com/gi, '');
+      // Title from h2.entry-title
+      const titleEl = card.querySelector('h2.entry-title') || card.querySelector('h2');
+      const rawTitle = titleEl?.textContent || '';
+      const title = rawTitle.trim().replace(/\s+/g, ' ').replace(/Viral video from viralkand\.com/gi, '').trim();
 
-      // Get thumbnail - try multiple sources
-      const imgEl = 
-        card.querySelector('img') || 
-        link.querySelector('img');
-      
-      const thumb =
-        imgEl?.getAttribute('data-src') ||
-        imgEl?.getAttribute('data-lazy-src') ||
-        imgEl?.src ||
-        '';
+      // Thumbnail from img
+      const imgEl = card.querySelector('img');
+      const thumb = imgEl?.src || imgEl?.getAttribute('data-src') || '';
 
-      // Skip if it's a lazy-load placeholder SVG
-      if (thumb.includes('data:image/svg') || !thumb) return;
-
-      // Get category if available
-      const categoryEl = card.querySelector('a[rel="category"], .cat-links a, .category a');
-      const category = categoryEl?.textContent?.trim() || 'General';
+      // Category
+      const catEl = card.querySelector('a[rel="category"]');
+      const category = catEl?.textContent?.trim() || 'Viral';
 
       if (href && title) {
         out.push({
-          id: `vid_${Date.now()}_${index}`,
+          id: `vid-${href.split('/').filter(Boolean).pop()}`,
           title: title.slice(0, 150),
-          description: `Video from ${new URL(href).hostname}`,
+          description: 'Viral video from viralkand.com',
           category: category,
           duration: '00:00',
           embedUrl: href,
           thumbnailUrl: thumb,
-          tags: [new URL(href).hostname.replace('www.', '').split('.')[0]],
+          tags: ['viralkand', 'viral'],
           uploadedAt: new Date().toISOString(),
           views: 0,
         });
       }
     });
 
-    return out.slice(0, 20);
+    return out;
   });
 
   await browser.close();
@@ -103,11 +82,18 @@ async function scrapeSite(targetUrl) {
 }
 
 async function main() {
+  // Scrape 10 pages of viralkand
   const targetUrls = [
-    // Add your target pages here
+    'https://viralkand.com/',
     'https://viralkand.com/page/2/',
-    'https://www.fsiblog5.com/page/2/',
-    // 'https://www.fsiblog5.com/page/3/',
+    'https://viralkand.com/page/3/',
+    'https://viralkand.com/page/4/',
+    'https://viralkand.com/page/5/',
+    'https://viralkand.com/page/6/',
+    'https://viralkand.com/page/7/',
+    'https://viralkand.com/page/8/',
+    'https://viralkand.com/page/9/',
+    'https://viralkand.com/page/10/',
   ];
 
   let allNew = [];
@@ -115,8 +101,10 @@ async function main() {
     try {
       const vids = await scrapeSite(url);
       allNew = allNew.concat(vids);
+      // Small delay between pages to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (e) {
-      console.error('Error scraping', url, e);
+      console.error('Error scraping', url, e.message);
     }
   }
 
@@ -128,17 +116,18 @@ async function main() {
     existing = [];
   }
 
-  // Dedupe by embedUrl/url
+  // Dedupe by embedUrl
   const combined = [...existing];
   allNew.forEach((v) => {
-    if (!combined.some((e) => e.embedUrl === v.embedUrl || e.url === v.url || e.embedUrl === v.url)) {
+    if (!combined.some((e) => e.embedUrl === v.embedUrl || e.id === v.id)) {
       combined.push(v);
     }
   });
 
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, JSON.stringify(combined, null, 2), 'utf8');
-  console.log(`✅ Wrote ${combined.length} total videos (${allNew.length} new) to data/videos.json`);
+  console.log(`✅ Scraped ${allNew.length} new videos from ${targetUrls.length} pages`);
+  console.log(`✅ Total videos in database: ${combined.length}`);
 }
 
 main().catch((e) => {
