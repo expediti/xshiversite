@@ -70,8 +70,8 @@ export default function Page() {
             Chill, curated, no spam.
           </h1>
           <p className="text-sm text-slate-400">
-            Browse Xshiver picks across Top Viewed, Latest drops, and Instagram
-            Viral. No Telegram or Terabox garbage links – just clean embeds.
+           FUCK TELEGRAM FUCK TERABOX | Get Top Viewed, Latest drops, and Instagram
+            Viral.NO garbage links
           </p>
         </section>
 
