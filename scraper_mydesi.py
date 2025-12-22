@@ -1,4 +1,4 @@
-# scraper_mydesi.py
+# scraper_mydesi.py - NO API, raw requests
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -7,21 +7,24 @@ from datetime import datetime
 import time
 import os
 
-SCRAPER_API_KEY = '512bf9b26d582f99b50ae92297c7fb7b'
-
 def scrape_mydesi(page_num):
-    """Scrape mydesi.click"""
+    """Raw scraping mydesi.click"""
     
     if page_num == 1:
         url = "https://mydesi.click/"
     else:
         url = f"https://mydesi.click/page/{page_num}/"
     
-    api_url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={url}"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Referer': 'https://mydesi.click/',
+    }
     
     try:
         print(f"Fetching page {page_num}...")
-        response = requests.get(api_url, timeout=60)
+        response = requests.get(url, headers=headers, timeout=30)
         
         if response.status_code != 200:
             print(f"  Failed: {response.status_code}")
@@ -30,8 +33,12 @@ def scrape_mydesi(page_num):
         soup = BeautifulSoup(response.content, 'html.parser')
         videos = []
         
-        # mydesi.click uses <article> or <div class="post-item">
-        articles = soup.find_all('article') or soup.find_all('div', class_='post')
+        articles = soup.find_all('article')
+        if not articles:
+            articles = soup.find_all('div', class_='post')
+        if not articles:
+            articles = soup.find_all('div', class_='item')
+        
         print(f"  Found {len(articles)} articles")
         
         for article in articles:
@@ -43,22 +50,23 @@ def scrape_mydesi(page_num):
             if not href or href.startswith('#') or '/category/' in href or '/tag/' in href:
                 continue
             
-            # Get title
+            if not href.startswith('http'):
+                href = 'https://mydesi.click' + href
+            
             title_el = article.find('h1') or article.find('h2') or article.find('h3')
             title = title_el.get_text(strip=True) if title_el else link.get('title', 'Video')
-            title = title.replace('\n', ' ').strip()
+            title = title.replace('\n', ' ').strip()[:150]
             
-            # Get thumbnail
             img = article.find('img')
             thumb = ''
             if img:
                 thumb = img.get('src', '') or img.get('data-src', '') or img.get('data-lazy-src', '')
             
             if href and title and title != 'Video':
-                video_id = re.sub(r'[^a-z0-9-]', '', title.lower())[:40]
+                video_id = f"md-{hash(href) % 1000000}"
                 videos.append({
-                    'id': f'vid-{video_id}-{page_num}',
-                    'title': title[:150],
+                    'id': video_id,
+                    'title': title,
                     'description': 'Video from mydesi.click',
                     'category': 'Desi',
                     'duration': '00:00',
@@ -79,10 +87,10 @@ def scrape_mydesi(page_num):
 def main():
     all_videos = []
     
-    for page in range(1, 4):  # 3 pages
+    for page in range(1, 4):
         videos = scrape_mydesi(page)
         all_videos.extend(videos)
-        time.sleep(2)
+        time.sleep(3)
     
     try:
         with open('data/videos.json', 'r') as f:
@@ -90,8 +98,8 @@ def main():
     except:
         existing = []
     
-    existing_ids = {v['id'] for v in existing}
-    new_videos = [v for v in all_videos if v['id'] not in existing_ids]
+    existing_urls = {v['embedUrl'] for v in existing}
+    new_videos = [v for v in all_videos if v['embedUrl'] not in existing_urls]
     
     combined = existing + new_videos
     
