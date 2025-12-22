@@ -1,4 +1,4 @@
-# scraper_fsiblog5.py - FSIBlog5 Scraper
+# scraper_fsiblog5.py - NO API, raw requests
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -7,21 +7,24 @@ from datetime import datetime
 import time
 import os
 
-SCRAPER_API_KEY = '512bf9b26d582f99b50ae92297c7fb7b'
-
 def scrape_fsiblog5(page_num):
-    """Scrape fsiblog5.com"""
+    """Raw scraping fsiblog5"""
     
     if page_num == 1:
         url = "https://www.fsiblog5.com/"
     else:
         url = f"https://www.fsiblog5.com/page/{page_num}/"
     
-    api_url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={url}"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Referer': 'https://www.fsiblog5.com/',
+    }
     
     try:
         print(f"Fetching page {page_num}...")
-        response = requests.get(api_url, timeout=60)
+        response = requests.get(url, headers=headers, timeout=30)
         
         if response.status_code != 200:
             print(f"  Failed: {response.status_code}")
@@ -30,12 +33,16 @@ def scrape_fsiblog5(page_num):
         soup = BeautifulSoup(response.content, 'html.parser')
         videos = []
         
-        # FSIBlog5 uses <article class="post">
         articles = soup.find_all('article', class_='post')
+        if not articles:
+            articles = soup.find_all('article')
+        if not articles:
+            articles = soup.find_all('div', class_='post')
+        
         print(f"  Found {len(articles)} articles")
         
         for article in articles:
-            link = article.find('a')
+            link = article.find('a', href=True)
             if not link:
                 continue
             
@@ -43,26 +50,23 @@ def scrape_fsiblog5(page_num):
             if not href or '/tag/' in href or '/category/' in href:
                 continue
             
-            # Title from h2.entry-title
-            title_el = article.find('h2', class_='entry-title') or article.find('h2')
-            title = title_el.get_text(strip=True) if title_el else ''
+            if not href.startswith('http'):
+                href = 'https://www.fsiblog5.com' + href
             
-            if not title:
-                continue
+            title_el = article.find('h2', class_='entry-title') or article.find('h2') or article.find('h3')
+            title = title_el.get_text(strip=True) if title_el else 'Video'
+            title = title.replace('\n', ' ').strip()[:150]
             
-            title = title.replace('\n', ' ').strip()
-            
-            # Thumbnail
             img = article.find('img')
             thumb = ''
             if img:
                 thumb = img.get('src', '') or img.get('data-src', '')
             
-            if href and title:
-                video_id = href.rstrip('/').split('/')[-1]
+            if href and title and title != 'Video':
+                video_id = f"fsi-{hash(href) % 1000000}"
                 videos.append({
-                    'id': f'vid-{video_id}',
-                    'title': title[:150],
+                    'id': video_id,
+                    'title': title,
                     'description': 'Video from fsiblog5',
                     'category': 'FSI',
                     'duration': '00:00',
@@ -86,7 +90,7 @@ def main():
     for page in range(1, 6):
         videos = scrape_fsiblog5(page)
         all_videos.extend(videos)
-        time.sleep(2)
+        time.sleep(3)
     
     try:
         with open('data/videos.json', 'r') as f:
@@ -94,8 +98,8 @@ def main():
     except:
         existing = []
     
-    existing_ids = {v['id'] for v in existing}
-    new_videos = [v for v in all_videos if v['id'] not in existing_ids]
+    existing_urls = {v['embedUrl'] for v in existing}
+    new_videos = [v for v in all_videos if v['embedUrl'] not in existing_urls]
     
     combined = existing + new_videos
     
@@ -103,8 +107,8 @@ def main():
     with open('data/videos.json', 'w') as f:
         json.dump(combined, f, indent=2)
     
-    print(f"\n✅ Scraped {len(new_videos)} new videos from 5 pages")
-    print(f"✅ Total videos: {len(combined)}")
+    print(f"\n✅ Scraped {len(new_videos)} new videos")
+    print(f"✅ Total: {len(combined)}")
 
 if __name__ == '__main__':
     main()
