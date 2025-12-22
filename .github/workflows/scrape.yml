@@ -1,4 +1,4 @@
-name: Scrape Shady Videos
+name: Scrape Videos
 
 on:
   workflow_dispatch:
@@ -10,25 +10,30 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: actions/setup-python@v5
+
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-      
-      - name: Install dependencies
+          node-version: 20
+
+      - name: Install Playwright
         run: |
-          pip install requests beautifulsoup4
-      
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+
       - name: Run scraper
-        run: python scraper.py
-      
-      - name: Commit
+        run: node scraper.js
+
+      - name: Commit updates
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git add data/videos.json
-          git diff --cached --quiet || git commit -m "chore: update videos [skip ci]"
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "chore: update videos.json"
           git push
