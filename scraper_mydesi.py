@@ -1,4 +1,4 @@
-# scraper_desibf.py - EXTRACT REAL VIDEO PLAYER ONLY
+# scraper_mydesi.py - MYDESI.CLICK SCRAPER
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -7,11 +7,13 @@ import time
 import os
 import re
 
-def get_posts(page_num):
-    """Get video posts from desibf.com"""
-    url = f"https://mydesi.click/page/{page_num}/" if page_num > 1 else "https://mydesi.click/"
+def get_posts(page_num=1):
+    """Get video posts from mydesi.click"""
+    url = f"https://mydesi.click/" if page_num == 1 else f"https://mydesi.click/page/{page_num}/"
     
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
     
     try:
         response = requests.get(url, headers=headers, timeout=30)
@@ -22,27 +24,32 @@ def get_posts(page_num):
         soup = BeautifulSoup(response.content, 'html.parser')
         posts = []
         
-        articles = soup.find_all('article')
+        # Try multiple selectors - mydesi.click uses different structures
+        articles = soup.find_all('article') or soup.find_all('div', class_='post')
         
         for article in articles:
+            # Find post link
             link = article.find('a', href=True)
+            if not link:
+                link = article.find('a')
+            
             if not link:
                 continue
             
             href = link.get('href', '').strip()
-            if not href or '/tag/' in href or '/category/' in href:
+            if not href or '/tag/' in href or '/category/' in href or '#' in href:
                 continue
             
-            # Title
-            h2 = article.find('h2') or article.find('h3')
-            title = h2.get_text(strip=True) if h2 else 'Video'
+            # Get title
+            h2 = article.find(['h2', 'h3', 'h1'])
+            title = h2.get_text(strip=True) if h2 else link.get('title', 'Video')
             title = title.replace('\n', ' ').strip()[:150]
             
-            # Thumbnail
+            # Get thumbnail
             img = article.find('img')
             thumb = ''
             if img:
-                thumb = img.get('data-src', '') or img.get('src', '')
+                thumb = img.get('data-src', '') or img.get('src', '') or img.get('data-lazy-src', '')
             
             if href and title and len(title) > 3:
                 posts.append({'url': href, 'title': title, 'thumb': thumb})
@@ -55,10 +62,10 @@ def get_posts(page_num):
         return []
 
 def extract_video_player(post_url):
-    """Extract ONLY the video player iframe URL, not the post page"""
+    """Extract video player URL from post"""
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://desibf.com/'
+        'Referer': 'https://mydesi.click/'
     }
     
     try:
@@ -69,14 +76,15 @@ def extract_video_player(post_url):
         soup = BeautifulSoup(response.content, 'html.parser')
         html_content = str(response.content)
         
-        # Method 1: Find iframe with video player domains
-        iframes = soup.find_all('iframe')
-        
+        # Video player domains
         video_domains = [
-            'streamtape', 'dood', 'mixdrop', 'streamlare', 
-            'vidoza', 'upstream', 'voe', 'filemoon', 'fembed',
-            'streamsb', 'videovard', 'streamwish'
+            'streamtape', 'dood', 'mixdrop', 'streamlare', 'vidoza',
+            'upstream', 'voe', 'filemoon', 'fembed', 'streamsb',
+            'videovard', 'streamwish', 'mp4upload', 'sendvid'
         ]
+        
+        # Method 1: Find iframe with video player
+        iframes = soup.find_all('iframe')
         
         for iframe in iframes:
             src = iframe.get('src', '').strip()
@@ -84,68 +92,72 @@ def extract_video_player(post_url):
             if not src or not src.startswith('http'):
                 continue
             
-            # Skip ads
-            ad_keywords = ['doubleclick', 'googlesyndication', 'ads', 'adserver', 'banner']
-            if any(ad in src.lower() for ad in ad_keywords):
+            # Skip ads and tracking
+            skip_keywords = ['doubleclick', 'ads', 'adserver', 'banner', 'track', 'analytics', 'pixel']
+            if any(kw in src.lower() for kw in skip_keywords):
                 continue
             
             # Accept video players
             if any(vd in src.lower() for vd in video_domains):
-                print(f"      ✅ Found player: {src[:50]}...")
                 return src
         
-        # Method 2: Search for video URLs in page source
-        video_patterns = [
-            r'https?://[^"\']*(?:streamtape|dood|mixdrop|streamlare|vidoza|upstream|voe|filemoon)[^"\']*',
-            r'"file":"([^"]+\.m3u8[^"]*)"',
-            r'"file":"([^"]+\.mp4[^"]*)"'
+        # Method 2: Search HTML for video URLs
+        # Look for direct video player URLs
+        patterns = [
+            r'https?://(?:' + '|'.join(video_domains) + r')[^\s"\'<>]*',
+            r'"url"\s*:\s*"([^"]+(?:mp4|m3u8)[^"]*)"',
+            r'"src"\s*:\s*"([^"]+(?:mp4|m3u8)[^"]*)"',
+            r'src=[\'"](https?://[^\s\'\"<>]+?)[\'\"]'
         ]
         
-        for pattern in video_patterns:
-            matches = re.findall(pattern, html_content)
+        for pattern in patterns:
+            matches = re.findall(pattern, html_content, re.IGNORECASE)
             if matches:
-                url = matches[0] if isinstance(matches[0], str) else matches[0]
-                if url.startswith('http'):
-                    print(f"      ✅ Found embed: {url[:50]}...")
-                    return url
+                for url in matches:
+                    if url.startswith('http') and any(vd in url.lower() for vd in video_domains):
+                        return url
         
-        print(f"      ❌ No video player found")
         return None
         
     except Exception as e:
-        print(f"      ❌ Error: {e}")
         return None
 
 def main():
-    print("🔍 Scraping DESIBF.COM - VIDEO PLAYERS ONLY")
+    print("🔍 Scraping MYDESI.CLICK")
     
     all_videos = []
     
-    # Scrape 3 pages (approx 30 videos)
+    # Scrape multiple pages
     for page in range(1, 4):
         print(f"\n📄 Page {page}")
         posts = get_posts(page)
         
-        for idx, post in enumerate(posts[:10]):
-            print(f"   {idx+1}/10: {post['title'][:45]}...")
+        if not posts:
+            break
+        
+        for idx, post in enumerate(posts[:8]):
+            print(f"   {idx+1}/{len(posts)}: {post['title'][:45]}...")
             
-            # THIS IS THE KEY FIX - extract real video player
+            # Extract real video player
             player_url = extract_video_player(post['url'])
             
             if not player_url:
+                print(f"      ❌ No player found")
                 continue
             
-            video_id = f"desibf-{abs(hash(player_url)) % 1000000}"
+            print(f"      ✅ Player extracted")
+            
+            video_id = f"mydesi-{abs(hash(player_url)) % 1000000}"
             
             all_videos.append({
                 'id': video_id,
                 'title': post['title'],
-                'description': 'Desi BF video',
-                'category': 'Desi',
+                'description': 'MyDesi video',
+                'category': 'MyDesi',
                 'duration': '00:00',
-                'embedUrl': player_url,  # Now this is the PLAYER, not the page
+                'embedUrl': player_url,
                 'thumbnailUrl': post['thumb'],
-                'tags': ['desibf', 'desi'],
+                'tags': ['mydesi', 'desi'],
                 'uploadedAt': datetime.utcnow().isoformat() + 'Z',
                 'views': 0
             })
@@ -172,7 +184,7 @@ def main():
     with open('data/videos.json', 'w') as f:
         json.dump(combined, f, indent=2)
     
-    print(f"\n✅ Scraped: {len(new_videos)} new video players")
+    print(f"\n✅ Scraped: {len(new_videos)} new videos")
     print(f"✅ Total: {len(combined)}")
 
 if __name__ == '__main__':
