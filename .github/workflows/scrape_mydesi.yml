@@ -1,0 +1,41 @@
+name: Scrape MyDesi
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */12 * * *'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    concurrency:
+      group: scrape-videos
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - run: pip install requests beautifulsoup4
+      
+      - run: python scraper_mydesi.py
+      
+      - run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git pull origin main --rebase || true
+          git add data/videos.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "update mydesi videos [skip ci]" || exit 0
+          git push origin main || {
+            git pull --rebase origin main
+            git push origin main
+          }
