@@ -9,7 +9,7 @@ async function scrapeVideos() {
   });
   
   // REPLACE WITH YOUR SHADY SITE'S LISTING PAGE
-  const targetUrl = 'https://your-shady-site.com/videos'; 
+  const targetUrl = 'https://viralkand.com/'; 
   const page = await context.newPage();
   
   // Wait for Cloudflare/ads to settle (key for shady sites)
