@@ -3,7 +3,7 @@ name: Scrape Shady Videos
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: '0 */6 * * *'
 
 jobs:
   scrape:
@@ -12,31 +12,23 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
         with:
-          node-version: 20
-
-      - name: Install Playwright
+          python-version: '3.11'
+      
+      - name: Install dependencies
         run: |
-          npm init -y
-          npm install playwright
-          npx playwright install --with-deps chromium
-
+          pip install requests beautifulsoup4
+      
       - name: Run scraper
-        run: node scraper.js
-
-      - name: Commit updated videos.json
+        run: python scraper.py
+      
+      - name: Commit
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git add data/videos.json
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          git commit -m "chore: update scraped videos [skip ci]"
+          git diff --cached --quiet || git commit -m "chore: update videos [skip ci]"
           git push
