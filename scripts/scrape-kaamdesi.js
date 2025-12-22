@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { chromium } from "playwright";
 
-const BASE = "https://kaamdesi.com";
+const BASE = "https://www.fsiblog.cc/page/7/";
 const PAGES = [
   `${BASE}/`,
   `${BASE}/page/2/`,
