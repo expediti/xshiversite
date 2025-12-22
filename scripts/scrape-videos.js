@@ -4,20 +4,23 @@ import { chromium } from "playwright";
 
 /* ===================== CONFIG ===================== */
 
-const BASE = "https://desimyhub.net";
+const BASE = "https://mydesi.click";
 const PAGES = [
-  `${BASE}/latest/`,
-  `${BASE}/latest/page/2/`,
+  `${BASE}/`,
+  `${BASE}/page/2/`,
 ];
 
-/* Blocked ad / junk domains */
-const BLOCKED_SRC = [
-  "ads",
+/* reject known junk / fake embeds */
+const BLOCKED_PATTERNS = [
+  "javascript:",
+  "/sync",
   "doubleclick",
   "googlesyndication",
+  "ads",
   "afcdn",
-  "pop",
-  "traffic",
+  "pixel",
+  "tracker",
+  "company-target",
 ];
 
 /* ===================== FILE ===================== */
@@ -42,14 +45,16 @@ function makeId(str) {
   return "vid-" + Buffer.from(str).toString("base64").slice(0, 32);
 }
 
-function isBlocked(url = "") {
-  return BLOCKED_SRC.some(b => url.toLowerCase().includes(b));
+function isValidVideoUrl(url) {
+  if (!url) return false;
+  if (!url.startsWith("http")) return false;
+  return !BLOCKED_PATTERNS.some(b => url.toLowerCase().includes(b));
 }
 
 /* ===================== MAIN ===================== */
 
 async function run() {
-  console.log("▶ Scraper started");
+  console.log("▶ Scraper started (mydesi.click)");
 
   const existing = loadExisting();
   const seen = new Set(existing.map(v => v.embedUrl));
@@ -63,10 +68,10 @@ async function run() {
 
   const page = await context.newPage();
 
-  /* 🚫 BLOCK ADS / TRACKERS */
+  /* block heavy ads */
   await page.route("**/*", route => {
-    const url = route.request().url();
-    if (BLOCKED_SRC.some(b => url.includes(b))) {
+    const u = route.request().url();
+    if (BLOCKED_PATTERNS.some(b => u.includes(b))) {
       return route.abort();
     }
     route.continue();
@@ -82,9 +87,8 @@ async function run() {
 
     await page.waitForTimeout(2000);
 
-    /* UNIVERSAL CARD SELECTOR */
-    let cards = await page.$$("a.video");
-    if (!cards.length) cards = await page.$$("article a[href]");
+    /* mydesi.click uses article cards */
+    let cards = await page.$$("article a[href]");
     if (!cards.length) cards = await page.$$(".post a[href]");
     if (!cards.length) cards = await page.$$("a[href]");
 
@@ -97,7 +101,6 @@ async function run() {
 
         const postUrl = href.startsWith("http") ? href : BASE + href;
 
-        /* TITLE */
         const title =
           (await card.$eval("h1", el => el.textContent.trim()).catch(() => null)) ||
           (await card.$eval("h2", el => el.textContent.trim()).catch(() => null)) ||
@@ -105,22 +108,14 @@ async function run() {
           (await card.getAttribute("title")) ||
           "Video";
 
-        /* THUMB */
         const thumbnail =
           (await card.$eval("img", el => el.src).catch(() => "")) || "";
 
-        /* DURATION */
-        const duration =
-          (await card
-            .$eval(".time, .clock, .duration", el => el.textContent.trim())
-            .catch(() => "00:00")) || "00:00";
-
-        /* OPEN POST PAGE */
         const post = await context.newPage();
 
         await post.route("**/*", route => {
-          const url = route.request().url();
-          if (BLOCKED_SRC.some(b => url.includes(b))) {
+          const u = route.request().url();
+          if (BLOCKED_PATTERNS.some(b => u.includes(b))) {
             return route.abort();
           }
           route.continue();
@@ -133,20 +128,21 @@ async function run() {
 
         await post.waitForTimeout(2000);
 
-        /* EMBED EXTRACTION */
         let embedUrl = null;
 
+        /* prefer iframe embeds */
         const iframeUrls = await post.$$eval("iframe", els =>
           els.map(el => el.src).filter(Boolean)
         );
 
-        embedUrl = iframeUrls.find(src => !isBlocked(src)) || null;
+        embedUrl = iframeUrls.find(isValidVideoUrl) || null;
 
+        /* fallback: <video><source> */
         if (!embedUrl) {
           const videoUrls = await post.$$eval("video source", els =>
             els.map(el => el.src).filter(Boolean)
           );
-          embedUrl = videoUrls.find(src => !isBlocked(src)) || null;
+          embedUrl = videoUrls.find(isValidVideoUrl) || null;
         }
 
         await post.close();
@@ -156,20 +152,19 @@ async function run() {
         results.push({
           id: makeId(embedUrl),
           title,
-          description: `Video from ${new URL(BASE).hostname}`,
+          description: `Video from mydesi.click`,
           category: "Viral",
-          duration,
+          duration: "00:00",
           embedUrl,
           thumbnailUrl: thumbnail,
-          tags: [new URL(BASE).hostname],
+          tags: ["mydesi.click"],
           uploadedAt: new Date().toISOString(),
           views: 0,
         });
 
         seen.add(embedUrl);
         console.log("➕ Added:", title.slice(0, 60));
-      } catch (err) {
-        console.log("⚠️ Skipped one card");
+      } catch {
         continue;
       }
     }
@@ -181,9 +176,9 @@ async function run() {
   console.log(`✅ Done. Total videos: ${results.length}`);
 }
 
-/* ⏱ HARD SAFETY EXIT */
+/* hard stop */
 setTimeout(() => {
-  console.error("⏱ Forced exit to prevent hang");
+  console.error("⏱ Forced exit");
   process.exit(0);
 }, 4 * 60 * 1000);
 
