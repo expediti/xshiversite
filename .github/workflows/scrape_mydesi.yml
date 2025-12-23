@@ -26,7 +26,7 @@ jobs:
       
       - run: pip install requests beautifulsoup4
       
-      - run: python scraper_mydesi.py
+      - run: python scraper_fsiblog.py
       
       - run: |
           git config user.name "GitHub Action"
