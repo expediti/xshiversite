@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export default function PageNumber() {
   const params = useParams();
-  const page = params.page as string;
+  const page = (params?.page as string) || '1';
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +27,7 @@ export default function PageNumber() {
   if (loading) return <div className="loading">Loading...</div>;
 
   const pageNum = parseInt(page);
-  const totalPages = 45; // 899 videos / 20 = ~45 pages
+  const totalPages = 45;
 
   return (
     <main className="container">
