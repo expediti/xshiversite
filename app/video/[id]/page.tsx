@@ -6,12 +6,14 @@ import Link from 'next/link';
 
 export default function VideoPage() {
   const params = useParams();
-  const id = params.id as string;
+  const id = (params?.id as string) || '';
   const [video, setVideo] = useState<any>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!id) return;
+    
     fetch('/data/videos.json')
       .then(r => r.json())
       .then(data => {
@@ -63,7 +65,7 @@ export default function VideoPage() {
 
       <h2>More Videos</h2>
       <div className="suggestions">
-        {suggestions.map(v => (
+        {suggestions.map((v: any) => (
           <Link key={v.id} href={`/video/${v.id}`} className="suggestion-card">
             <img src={v.thumbnailUrl || '/placeholder.jpg'} alt={v.title} />
             <h4>{v.title}</h4>
