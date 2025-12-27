@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import Header from "@/components/Header";
 import CategoryPills from "@/components/CategoryPills";
 import VideoCard from "@/components/VideoCard";
@@ -84,9 +85,9 @@ export default function Page() {
           
           <div className="grid grid-cols-2 gap-3 md:gap-4">
             {paginatedVideos.map(video => (
-              <a key={video.id} href={`/video/${video.id}`}>
+              <Link key={video.id} href={`/video/${video.id}`}>
                 <VideoCard video={video} />
-              </a>
+              </Link>
             ))}
             {filteredVideos.length === 0 && (
               <p className="col-span-2 text-center text-sm text-slate-400 py-8">
@@ -96,26 +97,45 @@ export default function Page() {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-4">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs md:text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
-              >
-                ← Prev
-              </button>
-              
-              <span className="text-xs md:text-sm text-slate-400 px-2">
-                {currentPage} / {totalPages}
-              </span>
-              
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs md:text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
-              >
-                Next →
-              </button>
+            <div className="flex flex-col gap-4 pt-6">
+              {/* Current page navigation */}
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs md:text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  ← Prev
+                </button>
+                
+                <span className="text-xs md:text-sm text-slate-400 px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs md:text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  Next →
+                </button>
+              </div>
+
+              {/* Direct page links for SEO */}
+              <nav className="flex items-center justify-center gap-2 flex-wrap">
+                <span className="text-xs text-slate-500 mr-2">Jump to page:</span>
+                {[1, 2, 3, 4, 5, 10, 15, 20, 30, 40, 50, 60, 70, 75].map(pageNum => (
+                  pageNum <= totalPages && (
+                    <Link
+                      key={pageNum}
+                      href={`/page/${pageNum}`}
+                      className="rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-cyan-400 transition"
+                    >
+                      {pageNum}
+                    </Link>
+                  )
+                ))}
+              </nav>
             </div>
           )}
         </section>
