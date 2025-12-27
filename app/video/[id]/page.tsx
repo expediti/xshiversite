@@ -1,113 +1,90 @@
-import { notFound } from "next/navigation";
-import type { Metadata } from "next";
-import VideoCard from "@/components/VideoCard";
-import type { Video } from "@/components/types";
-import videosData from "@/data/videos.json";
+'use client';
 
-const allVideos = videosData as Video[];
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
-type Props = {
-  params: Promise<{ id: string }>;
-};
+export default function VideoPage() {
+  const params = useParams();
+  const id = params.id as string;
+  const [video, setVideo] = useState<any>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export function generateStaticParams() {
-  return allVideos.map(video => ({
-    id: video.id
-  }));
-}
+  useEffect(() => {
+    fetch('/data/videos.json')
+      .then(r => r.json())
+      .then(data => {
+        const found = data.find((v: any) => v.id === id);
+        if (found) {
+          setVideo(found);
+          const others = data.filter((v: any) => v.id !== id);
+          const shuffled = others.sort(() => 0.5 - Math.random());
+          setSuggestions(shuffled.slice(0, 6));
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [id]);
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const video = allVideos.find(v => v.id === id);
-  if (!video) return { title: "Video not found – Xshiver" };
-  return {
-    title: `${video.title} – Xshiver`,
-    description: video.description
-  };
-}
-
-export default async function VideoPage({ params }: Props) {
-  const { id } = await params;
-  const video = allVideos.find(v => v.id === id);
-
-  if (!video) {
-    notFound();
-  }
-
-  const recommendations = allVideos
-    .filter(v => v.id !== video.id && v.category === video.category)
-    .slice(0, 6);
+  if (loading) return <div className="loading">Loading...</div>;
+  if (!video) return <div className="error">Video not found</div>;
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Static header for video pages */}
-      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <a href="/" className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-cyan-400 to-violet-500" />
-            <span className="text-base font-semibold tracking-tight">
-              Xshiver
-            </span>
-          </a>
-          <a
-            href="/"
-            className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-300 hover:bg-slate-800"
-          >
-            ← Back to home
-          </a>
+    <main className="container">
+      <Link href="/" className="back-btn">← Back to Home</Link>
+      
+      <h1>{video.title}</h1>
+      
+      <div className="video-player">
+        <iframe 
+          src={video.embedUrl} 
+          width="100%" 
+          height="500"
+          frameBorder="0"
+          allowFullScreen
+          title={video.title}
+        />
+      </div>
+
+      <div className="video-info">
+        <span>⏱️ {video.duration}</span>
+        <span>📁 {video.category}</span>
+        <span>👁️ {video.views || 0} views</span>
+      </div>
+
+      {video.tags && (
+        <div className="tags">
+          {video.tags.map((tag: string) => (
+            <span key={tag} className="tag">{tag}</span>
+          ))}
         </div>
-      </header>
+      )}
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6">
-        <section className="grid gap-6 lg:grid-cols-[2fr,1.2fr]">
-          {/* Main video */}
-          <div className="space-y-3">
-            <div className="aspect-video w-full rounded-2xl border border-slate-800 bg-black">
-              <iframe
-                src={video.embedUrl}
-                title={video.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                className="h-full w-full rounded-2xl"
-              />
-            </div>
-            <h1 className="text-xl font-semibold">{video.title}</h1>
-            <p className="text-sm text-slate-300">{video.description}</p>
-            <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-              <span className="rounded-full bg-slate-800 px-2 py-0.5">
-                {video.category}
-              </span>
-              {video.tags?.map(tag => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-slate-800 px-2 py-0.5"
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          </div>
+      <h2>More Videos</h2>
+      <div className="suggestions">
+        {suggestions.map(v => (
+          <Link key={v.id} href={`/video/${v.id}`} className="suggestion-card">
+            <img src={v.thumbnailUrl || '/placeholder.jpg'} alt={v.title} />
+            <h4>{v.title}</h4>
+          </Link>
+        ))}
+      </div>
 
-          {/* Recommendations */}
-          <aside className="space-y-3">
-            <h2 className="text-sm font-semibold text-slate-200">
-              More from Xshiver
-            </h2>
-            <div className="grid gap-3">
-              {recommendations.length === 0 && (
-                <p className="text-xs text-slate-500">
-                  No more videos in this category yet.
-                </p>
-              )}
-              {recommendations.map(v => (
-                <a key={v.id} href={`/video/${v.id}`} className="block">
-                  <VideoCard video={v} />
-                </a>
-              ))}
-            </div>
-          </aside>
-        </section>
-      </main>
-    </div>
+      <style jsx>{`
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .back-btn { display: inline-block; margin-bottom: 20px; color: #0070f3; text-decoration: none; }
+        .video-player { margin: 20px 0; }
+        .video-player iframe { border-radius: 8px; width: 100%; }
+        .video-info { display: flex; gap: 20px; margin: 20px 0; font-size: 14px; }
+        .tags { margin: 20px 0; }
+        .tag { background: #f0f0f0; padding: 5px 10px; border-radius: 5px; margin-right: 10px; font-size: 12px; }
+        .suggestions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
+        .suggestion-card { text-decoration: none; color: inherit; }
+        .suggestion-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 5px; }
+        .suggestion-card h4 { margin: 10px 0; font-size: 14px; }
+        .loading, .error { text-align: center; padding: 50px; }
+      `}</style>
+    </main>
   );
 }
