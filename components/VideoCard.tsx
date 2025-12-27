@@ -1,33 +1,96 @@
-"use client"; 
+import Link from 'next/link';
 
-import type { Video } from "./types";
+interface VideoCardProps {
+  video: {
+    id: string;
+    title: string;
+    thumbnailUrl: string;
+    duration: string;
+    views?: number;
+    category?: string;
+  };
+}
 
-type Props = {
-  video: Video;
-};
-
-export default function VideoCard({ video }: Props) {
+export default function VideoCard({ video }: VideoCardProps) {
   return (
-    <div className="group flex w-full flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 text-left shadow-sm transition hover:border-cyan-500/70 hover:bg-slate-900 cursor-pointer">
-      <div className="relative aspect-video w-full overflow-hidden">
-        <img
-          src={video.thumbnailUrl}
+    <Link href={`/video/${video.id}`} className="video-card">
+      <div className="thumbnail-wrapper">
+        <img 
+          src={video.thumbnailUrl || '/placeholder.jpg'} 
           alt={video.title}
-          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          loading="lazy"
         />
-        <span className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-0.5 text-xs text-slate-50">
-          {video.duration}
-        </span>
+        {video.duration && (
+          <span className="duration">{video.duration}</span>
+        )}
       </div>
-      <div className="flex flex-1 flex-col gap-1 px-3 py-3">
-        <span className="line-clamp-2 text-sm font-medium text-slate-50">
-          {video.title}
-        </span>
-        <span className="text-xs text-cyan-400">{video.category}</span>
-        <span className="line-clamp-2 text-xs text-slate-400">
-          {video.description}
-        </span>
+      <div className="video-info">
+        <h3>{video.title}</h3>
+        {video.views !== undefined && (
+          <span className="views">👁️ {video.views} views</span>
+        )}
       </div>
-    </div>
+
+      <style jsx>{`
+        .video-card {
+          display: block;
+          text-decoration: none;
+          color: inherit;
+          border-radius: 8px;
+          overflow: hidden;
+          transition: transform 0.2s;
+        }
+        
+        .video-card:hover {
+          transform: translateY(-4px);
+        }
+        
+        .thumbnail-wrapper {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          overflow: hidden;
+          background: #f0f0f0;
+        }
+        
+        .thumbnail-wrapper img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        
+        .duration {
+          position: absolute;
+          bottom: 8px;
+          right: 8px;
+          background: rgba(0, 0, 0, 0.8);
+          color: white;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        
+        .video-info {
+          padding: 12px 8px;
+        }
+        
+        .video-info h3 {
+          margin: 0 0 6px 0;
+          font-size: 14px;
+          font-weight: 600;
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        .views {
+          font-size: 12px;
+          color: #666;
+        }
+      `}</style>
+    </Link>
   );
 }
