@@ -35,8 +35,8 @@ export default function RootLayout({
         
         {children}
         
-        {/* XSHIVER TELEGRAM FOOTER */}
-        <footer className="bg-slate-900/50 backdrop-blur-sm border-t border-slate-800/50 sticky bottom-0 z-50 py-6">
+        {/* XSHIVER TELEGRAM FOOTER - NORMAL POSITION */}
+        <footer className="bg-slate-900/50 backdrop-blur-sm border-t border-slate-800/50 py-6 mt-12">
           <div className="max-w-6xl mx-auto px-4 text-center">
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4">
               <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl backdrop-blur-sm border border-slate-700/50">
